@@ -1,0 +1,5 @@
+Flask==3.*
+cachetools
+pylint
+pytest
+requests

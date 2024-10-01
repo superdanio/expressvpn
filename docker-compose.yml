@@ -1,0 +1,27 @@
+services:
+  expressvpn:
+    image: expressvpn:local
+    container_name: expressvpn
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    devices: 
+      - /dev/net/tun
+    stdin_open: true
+    tty: true
+    env_file: .env
+    volumes:
+      - /tmp/vpn:/vpn_shared
+    ports:
+      - "25000:5000"
+
+  curl:
+    image: alpine/curl
+    container_name: curl
+    command: sleep infinity
+    network_mode: service:expressvpn
+    depends_on:
+      expressvpn:
+        condition: service_healthy
+    volumes:
+      - /tmp/vpn/resolv.conf:/etc/resolv.conf
