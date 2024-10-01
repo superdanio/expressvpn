@@ -1,0 +1,5 @@
+.DS_Store
+.venv
+.vim
+tests.log
+__pycache__
