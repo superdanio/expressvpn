@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      APP_VERSION:
+        description: 'ExpressVPN App Version'
+        required: true
+        default: '3.76.0.4-1'
+      TAG_SUFFIX:
+        description: 'Tag suffix (used when patching existing versions)'
+        required: false
+        default: ''
+      LATEST:
+        description: 'Whether it should be tagged as latest'
+        required: false
+        default: 'true'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Build
+      run: docker build . --file Dockerfile --tag superdanio/expressvpn:${{ inputs.APP_VERSION }}${{ inputs.TAG_SUFFIX }} --tag superdanio/expressvpn:latest
+    - name: Tests
+      run: |
+        python3 -m venv .venv
+        source .venv/bin/activate
+        pip install -r requirements.txt
+        pylint --recursive=y --ignore=.venv app/
+        ACTIVATION_CODE=${{ secrets.ACTIVATION_CODE }} TARGET_IMAGE=superdanio/expressvpn:latest pytest -v tests/
+    - name: Login
+      uses: docker/login-action@v3
+      with:
+        username: ${{ vars.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+    - name: Push
+      run: docker push superdanio/expressvpn:${{ inputs.APP_VERSION }}${{ inputs.TAG_SUFFIX }}
+    - name: Push latest
+      if: ${{ inputs.LATEST == 'true' }}
+      run: docker push superdanio/expressvpn:latest
