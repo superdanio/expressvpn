@@ -43,5 +43,4 @@ jobs:
       run: docker push superdanio/expressvpn:${{ inputs.APP_VERSION }}${{ inputs.TAG_SUFFIX }}
     - name: Push latest to Docker Hub
       if: ${{ inputs.LATEST == 'true' }}
-      run: |
-        docker push superdanio/expressvpn:latest
+      run: docker push superdanio/expressvpn:latest
