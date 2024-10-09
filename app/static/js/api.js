@@ -1,4 +1,4 @@
-const API_PATH = '/api';
+const API_PATH = location.href + '/api';
 // const API_PATH = 'http://localhost:25000/api'; // to point to other/local running container
 
 const apiGet = (path) => fetch(API_PATH + path);
