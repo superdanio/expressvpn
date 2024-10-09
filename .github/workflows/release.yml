@@ -8,7 +8,7 @@ on:
         required: true
         default: '3.76.0.4-1'
       TAG_SUFFIX:
-        description: 'Tag suffix (used when patching existing versions'
+        description: 'Tag suffix (used when patching existing versions)'
         required: false
         default: ''
       LATEST:
