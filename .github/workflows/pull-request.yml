@@ -11,8 +11,9 @@ jobs:
         image: docker:dind
         options: --privileged
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Build
       run: docker build . --file Dockerfile --tag superdanio/expressvpn:test
     - name: Tests
       run: |
