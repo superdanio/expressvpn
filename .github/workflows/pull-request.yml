@@ -13,11 +13,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag superdanio/expressvpn:${{ inputs.APP_VERSION }}${{ inputs.TAG_SUFFIX }} --tag superdanio/expressvpn:latest
+      run: docker build . --file Dockerfile --tag superdanio/expressvpn:test
     - name: Tests
       run: |
         python3 -m venv .venv
         source .venv/bin/activate
         pip install -r requirements.txt
         pylint --recursive=y --ignore=.venv app/
-        ACTIVATION_CODE=${{ secrets.ACTIVATION_CODE }} TARGET_IMAGE=superdanio/expressvpn:latest pytest -v tests/
+        ACTIVATION_CODE=${{ secrets.ACTIVATION_CODE }} TARGET_IMAGE=superdanio/expressvpn:test pytest -v tests/
