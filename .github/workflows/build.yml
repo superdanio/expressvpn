@@ -1,6 +1,9 @@
-name: Pull Request Workflow
+name: Build And Test
 
 on:
+  push:
+    branches:
+    - master
   pull_request:
 
 jobs:
@@ -13,8 +16,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     - name: Build
-      run: docker build . --file Dockerfile --tag superdanio/expressvpn:test
+      run: docker buildx build --platform=linux/amd64 -t superdanio/expressvpn:test --load .
     - name: Tests
       run: |
         python3 -m venv .venv
