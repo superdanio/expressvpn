@@ -33,4 +33,4 @@ jobs:
       run: docker buildx build --build-arg APP_VERSION=${{ inputs.APP_VERSION }} --platform=linux/i386,linux/amd64,linux/arm64,linux/armhf -t superdanio/expressvpn:${{ inputs.APP_VERSION }}${{ inputs.TAG_SUFFIX }} --push .
     - name: Build and Push latest
       if: ${{ inputs.LATEST == 'true' }}
-      run: docker buildx build --platform=linux/i386,linux/amd64,linux/arm64,linux/armhf -t superdanio/expressvpn:latest --push .
+      run: docker buildx build --build-arg APP_VERSION=${{ inputs.APP_VERSION }} --platform=linux/i386,linux/amd64,linux/arm64,linux/armhf -t superdanio/expressvpn:latest --push .
