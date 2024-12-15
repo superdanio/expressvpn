@@ -26,13 +26,13 @@ class Client:
         result = subprocess.run([self.CMD, 'status'], stdout=subprocess.PIPE, check = False)
 
         if result.returncode == 0:
-            conn_status = self._sanitise(result.stdout.decode('utf-8').splitlines()[0].strip())
+            conn_status = self._sanitise(result.stdout.decode('utf-8').strip())
 
             if 'Not connected' in conn_status:
                 return StatusResponse(status = Status.DISCONNECTED)
 
             if 'Connected to ' in conn_status:
-                server = re.search('Connected to (.+)$', conn_status)
+                server = re.search('Connected to ([^\n\r]+)', conn_status, re.MULTILINE)
                 return StatusResponse(
                         status = Status.CONNECTED,
                         server = None if server is None else server.group(1))
@@ -49,30 +49,29 @@ class Client:
         result = subprocess.run([self.CMD, 'list', 'all'], stdout=subprocess.PIPE, check = False)
 
         if result.returncode == 0:
+            server_lines = self._find_servers(result.stdout.decode('utf-8').splitlines())
 
-            lines = result.stdout.decode('utf-8').splitlines()
+            if server_lines:
+                header = server_lines[0]
+                country_index = header.index('COUNTRY')
+                location_index = header.index('LOCATION')
+                recommended_index = header.index('RECOMMENDED')
 
-            header = self._sanitise(lines[0]).strip()
+                for line in server_lines[2:]:
+                    row = self._sanitise(line)
+                    alias = row[:country_index].strip()
+                    country = row[country_index:location_index].strip()
+                    location = row[location_index:recommended_index].strip()
+                    recommended = row[recommended_index:].strip()
 
-            country_index = header.index('COUNTRY')
-            location_index = header.index('LOCATION')
-            recommended_index = header.index('RECOMMENDED')
+                    if country:
+                        last_country = country
+                        servers[last_country] = []
 
-            for line in lines[2:]:
-                row = self._sanitise(line)
-                alias = row[:country_index].strip()
-                country = row[country_index:location_index].strip()
-                location = row[location_index:recommended_index].strip()
-                recommended = row[recommended_index:].strip()
-
-                if country:
-                    last_country = country
-                    servers[last_country] = []
-
-                servers[last_country].append(ServerDetails(
-                    alias = alias,
-                    location = location,
-                    recommended = 'Y' == recommended))
+                    servers[last_country].append(ServerDetails(
+                        alias = alias,
+                        location = location,
+                        recommended = 'Y' == recommended))
 
         return ServerList(servers)
 
@@ -116,3 +115,13 @@ class Client:
 
     def _sanitise(self, value: str):
         return self.ANSI_ESCAPE.sub('', value)
+
+    def _find_servers(self, lines: list[str]):
+        index = 0
+        while True:
+            if index == len(lines):
+                return []
+            header = self._sanitise(lines[index]).strip()
+            if header.startswith('ALIAS'):
+                return lines[index:]
+            index += 1
