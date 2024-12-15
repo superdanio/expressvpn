@@ -7,7 +7,7 @@ ENV PREFERRED_PROTOCOL=auto
 ENV LIGHTWAY_CIPHER=auto
 
 ARG TARGETARCH
-ARG APP_VERSION=3.76.0.4-1
+ARG APP_VERSION=3.79.0.0-1
 
 RUN if [ "$TARGETARCH" = arm64 ]; then dpkg --add-architecture armhf; fi; \
     apt-get update && \
