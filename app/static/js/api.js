@@ -1,11 +1,28 @@
 const API_PATH = location.href.replaceAll(new RegExp('/+$', 'g'), '') + '/api';
 // const API_PATH = 'http://localhost:25000/api'; // to point to other/local running container
 
-const apiGet = (path) => fetch(API_PATH + path);
-const apiPost = (path) => fetch(API_PATH + path, { method: 'POST' });
+class APIError extends Error {
+  constructor(response) {
+    super();
+    this.response = response;
+  }
+}
+
+const apiGet = (path) => fetch(API_PATH + path)
+  .then(response => {
+    if (response.ok) return response;
+    throw new APIError(response);
+  });
+
+const apiPost = (path) => fetch(API_PATH + path, { method: 'POST' })
+  .then(response => {
+    if (response.ok) return response;
+    throw new APIError(response);
+  });
+
 const deepEqual = (x, y) => {
   if (x === y) return true;
-  else if ((typeof x == "object" && x != null) && (typeof y == "object" && y != null)) {
+  else if ((typeof x == 'object' && x != null) && (typeof y == 'object' && y != null)) {
     if (Object.keys(x).length != Object.keys(y).length) return false;
     for (var prop in x) {
       return y.hasOwnProperty(prop) && deepEqual(x[prop], y[prop]);
@@ -144,7 +161,9 @@ const savePreference = async (key) => {
   return apiPost(`/preferences/${key}/${document.getElementById(key).value}`)
     .then(loadPreferences)
     .catch(function(err) {
-      console.error('Failed to load version', err);
+      err.response.json()
+        .then(json => addMessage(json.error))
+        .finally(() => console.error(`Failed to save preference: ${key}`));
     });
 };
 
@@ -177,6 +196,7 @@ const loadServers = async () => {
     console.info('Servers', data);
 		state.servers = data.servers;
   }).catch(function(err) {
+    addMessage(err, 'danger');
     console.error('Failed to load servers', err);
   });
 };
@@ -233,7 +253,7 @@ const enableControls = () => {
   ['connect', 'disconnect', 'refresh-cluster'].forEach(id => {
     const btn = document.getElementById(id);
     btn.disabled = false;
-    btn.children[0].classList.add("visually-hidden");
+    btn.children[0].classList.add('visually-hidden');
   });
 
   document.getElementById('disconnect').disabled = !isConnected();
@@ -241,7 +261,27 @@ const enableControls = () => {
 
 const disableControls = async (id) => {
   ['connect', 'disconnect', 'refresh-cluster'].forEach(btnId => document.getElementById(btnId).disabled = true);
-  if (id) document.getElementById(id).children[0].classList.remove("visually-hidden");
+  if (id) document.getElementById(id).children[0].classList.remove('visually-hidden');
+};
+
+const addMessage = (value, kind = 'danger') => {
+  const id = Date.now();
+  const message = document.createElement('div');
+  message.setAttribute('id', id);
+  message.classList.add('alert', 'alert-' + kind, 'alert-dismissible', 'fade', 'show');
+  message.setAttribute('role', 'alert');
+  message.appendChild(document.createTextNode(value));
+  const closeButton = document.createElement('button');
+  closeButton.classList.add('btn-close');
+  closeButton.setAttribute('data-bs-dismiss', 'alert');
+  closeButton.setAttribute('type', 'button');
+  closeButton.setAttribute('aria-label', 'Close');
+  message.appendChild(closeButton);
+  document.getElementById('messages').appendChild(message);
+  const bootstrapMessage = new bootstrap.Alert(message);
+  setTimeout(() => {
+    if (document.getElementById(id)) bootstrapMessage.close();
+  }, 5000);
 };
 
 const loadAll = () => {

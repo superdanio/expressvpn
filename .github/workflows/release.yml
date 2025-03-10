@@ -7,7 +7,7 @@ on:
       APP_VERSION:
         description: 'ExpressVPN App Version'
         required: true
-        default: '3.76.0.4-1'
+        default: '3.83.0.2-1'
       TAG_SUFFIX:
         description: 'Tag suffix (used when patching existing versions)'
         required: false
