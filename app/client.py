@@ -8,7 +8,7 @@ from models import Configuration, ServerDetails, ServerList, Status, StatusRespo
 class Client:
 
     CMD = 'expressvpn'
-    ANSI_ESCAPE = re.compile(r'\x1B(?:@-Z\\-_][|\[[0-?]*[ -/]*[@-~])')
+    ANSI_ESCAPE = re.compile(r'(?:\x1B[@-Z\\-_]|[\x80-\x9A\x9C-\x9F]|(?:\x1B\[|\x9B)[0-?]*[ -/]*[@-~])')
 
     @cached(cache={})
     def version(self):
@@ -77,17 +77,19 @@ class Client:
 
     def disconnect(self):
         # let's ignore the return code, as it could have not been connected...
-        subprocess.run([self.CMD, 'disconnect'], stdout=subprocess.PIPE, check = False)
+        subprocess.run([self.CMD, 'disconnect'], capture_output=False, check = False)
         self._refresh_dns_entries()
 
     def connect(self, server: str):
         self.disconnect()
 
-        subprocess.run([self.CMD, 'connect', server], stdout=subprocess.PIPE, check = True)
+        result = subprocess.run([self.CMD, 'connect', server], stderr=subprocess.PIPE, check = False)
+        if result.returncode != 0:
+            raise ValueError(self._sanitise(result.stderr.decode('utf-8').strip()))
         self._refresh_dns_entries()
 
     def refresh(self):
-        subprocess.run([self.CMD, 'refresh'], stdout=subprocess.PIPE, check = False)
+        subprocess.run([self.CMD, 'refresh'], capture_output=False, check = False)
         self._refresh_dns_entries()
 
     def preferences(self):
@@ -96,7 +98,6 @@ class Client:
         result = subprocess.run([self.CMD, 'preferences'], stdout=subprocess.PIPE, check = False)
 
         if result.returncode == 0:
-
             for line in result.stdout.decode('utf-8').splitlines():
                 pref = re.search('([^\\s]+)\\s+(.+)', self._sanitise(line).strip())
                 if pref is not None:
@@ -105,10 +106,13 @@ class Client:
         return response
 
     def set_preference(self, name: str, value: str):
-        subprocess.run(
+        result = subprocess.run(
                 [self.CMD, 'preferences', 'set', name, value],
-                stdout=subprocess.PIPE,
-                check = True)
+                stderr=subprocess.PIPE,
+                check = False)
+
+        if result.returncode != 0:
+            raise ValueError(self._sanitise(result.stderr.decode('utf-8').strip()))
 
     def _refresh_dns_entries(self):
         shutil.copyfile('/etc/resolv.conf', '/vpn_shared/resolv.conf')

@@ -12,6 +12,7 @@
         <div style="height: 4rem; margin: 1rem;"><img src="static/img/logo.svg" alt="logo" height="100%" /></div>
       </div>
       <div class="container text-center">
+        <div class="row justify-content-md-center p-2" id="messages"></div>
         <div class="row justify-content-md-center p-2">
           <div class="col-auto">
             <select name="server-list" id="servers-list" class="form-select w-auto" aria-label="Servers list"></select>
@@ -40,12 +41,12 @@
         <div class="row justify-content-md-center p-2 pb-4">
           <div class="accordion" id="preferences-accordion" style="width: 30rem;">
 						<div class="accordion-item">
-							<h2 class="accordion-header">
-								<button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+							<h2 class="accordion-header" id="collapsablePrefsHeader">
+								<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsablePrefs" aria-expanded="false" aria-controls="collapsablePrefs">
 									Preferences
 								</button>
 							</h2>
-							<div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#preferences-accordion">
+							<div id="collapsablePrefs" class="accordion-collapse collapse" aria-labelledby="collapsablePrefsHeader" data-bs-parent="#preferences-accordion">
 								<div class="accordion-body" id="preferences"></div>
 							</div>
 						</div>
