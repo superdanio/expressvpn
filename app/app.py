@@ -1,10 +1,15 @@
 import dataclasses
-from flask import Flask, Response, jsonify, redirect, render_template, request
+from typing import cast
+from flask import Flask, jsonify, redirect, render_template, request
+from models import SinglePreference
 from client import Client
 
 app = Flask(__name__)
 client = Client()
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    return { 'error': str(e) }, 500
 
 @app.route('/')
 @app.route('/home')
@@ -31,34 +36,34 @@ def get_servers():
 def get_status():
     return dataclasses.asdict(client.status())
 
+@app.route('/api/ips', methods=['GET'])
+def get_ips():
+    return dataclasses.asdict(client.ips())
+
 @app.route('/api/disconnect', methods=['POST'])
 def disconnect():
     client.disconnect()
-    return Response(204)
+    return '', 204
 
 @app.route('/api/connect', defaults={'server': 'smart'}, methods=['POST'])
 @app.route('/api/connect/<string:server>', methods=['POST'])
 def connect(server):
     try:
         client.connect(server)
-        return Response(204)
+        return '', 204
     except ValueError as e:
         return jsonify(error=str(e)), 500
 
-@app.route('/api/refresh', methods=['POST'])
-def refresh():
-    client.refresh()
-    return Response(204)
-
 @app.route('/api/preferences', methods=['GET'])
 def get_preferences():
-    return dataclasses.asdict(client.preferences())
+    return client.preferences()
 
-@app.route('/api/preferences/<string:name>/<string:value>', methods=['POST'])
-def set_preference(name, value):
+@app.route('/api/preferences', methods=['POST'])
+def set_preference():
     try:
-        client.set_preference(name, value)
-        return Response(204)
+        pref: SinglePreference = cast(SinglePreference, request.json)
+        client.set_preference(pref["key"], pref["value"])
+        return '', 204
     except ValueError as e:
         return jsonify(error=str(e)), 500
 

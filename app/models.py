@@ -1,30 +1,56 @@
 from dataclasses import dataclass, field
-from enum import Enum
+from typing import Literal, TypedDict
 
 @dataclass
 class Version:
     version: str
 
-class Status(str, Enum):
-    DISCONNECTED = 'DISCONNECTED'
-    CONNECTED = 'CONNECTED'
-    UNABLE_TO_CONNECT = 'UNABLE_TO_CONNECT'
-    FAILED = 'FAILED'
+class SinglePreference(TypedDict):
+    key: str
+    value: str | list[str]
+
+@dataclass
+class IPs:
+    vpn_ip: str
+    public_ip: str
+
+Protocol = Literal['auto', 'lightwayudp', 'lightwaytcp', 'openvpnudp', 'openvpntcp']
+ConnectionState = Literal[
+        'Disconnected',
+        'Connecting',
+        'Connected',
+        'Interrupted',
+        'Reconnecting',
+        'DisconnectingToReconnect',
+        'Disconnecting',
+        'Failed']
+
+Preferences = TypedDict(
+        'Preferences',
+        {
+            'allowlan': bool,
+            'autoconnect': bool,
+            'blockAds': bool,
+            'blockAdult': bool,
+            'blockAll': bool,
+            'blockMalicious': bool,
+            'blockTrackers': bool,
+            'debuglogging': str,
+            'dnsconfigured': bool,
+            'networklock': str,
+            'protocol': Protocol,
+            'split-app': list[str],
+            'splittunnel': bool,
+            })
 
 @dataclass
 class StatusResponse:
-    status: Status
+    status: ConnectionState
     server: str | None = None
 
 @dataclass
-class ServerDetails:
-    alias: str
-    location: str
-    recommended: bool
-
-@dataclass
 class ServerList:
-    servers: dict[str, list[ServerDetails]] = field(default_factory=dict)
+    servers: dict[str, list[str]] = field(default_factory=dict)
 
 @dataclass
 class Configuration:

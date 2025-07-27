@@ -1,23 +1,28 @@
 #!/usr/bin/env bash
 
-cp /etc/resolv.conf /tmp/resolv.conf
-umount /etc/resolv.conf
-mv /tmp/resolv.conf /etc/resolv.conf
-sed -i 's/DAEMON_ARGS=.*/DAEMON_ARGS=""/' /etc/init.d/expressvpn
-service expressvpn restart
-/usr/bin/expect /expressvpn/activate.sh
-expressvpn preferences set auto_connect true
-expressvpn preferences set preferred_protocol $PREFERRED_PROTOCOL
-expressvpn preferences set lightway_cipher $LIGHTWAY_CIPHER
+sudo cp /etc/resolv.conf /tmp/resolv.conf
+sudo umount /etc/resolv.conf
+sudo mv /tmp/resolv.conf /etc/resolv.conf
+
+nohup sudo /opt/expressvpn/bin/expressvpn-daemon &
+echo "$ACTIVATION_CODE" > $HOME/activation.code
+expressvpnctl background enable
+expressvpnctl login $HOME/activation.code
+if [[ "$?" -ne 0 ]]; then exit 1; fi
+expressvpnctl set protocol $PREFERRED_PROTOCOL
+sudo expressvpnctl set split-app bypass:/home/vpn/app/.venv/bin/python3
+sudo expressvpnctl set splittunnel true
 
 if [[ "$CONNECT_AT_STARTUP" == "true" ]]; then
-  expressvpn connect $SERVER
+  expressvpnctl set autoconnect true
+  expressvpnctl connect $SERVER
 fi
 
-if [[ "$(expressvpn status)" == "Not Activated" ]]; then exit 1; fi
+expressvpnctl status
+if [[ "$(expressvpnctl status)" == "Not Activated" ]]; then exit 1; fi
 
-cp /etc/resolv.conf /vpn_shared/resolv.conf
+sudo cp /etc/resolv.conf $HOME/vpn_shared/resolv.conf
 
+cd $HOME/app
 source .venv/bin/activate
-cd /app
 flask run --host=0.0.0.0

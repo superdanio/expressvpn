@@ -14,7 +14,12 @@ const apiGet = (path) => fetch(API_PATH + path)
     throw new APIError(response);
   });
 
-const apiPost = (path) => fetch(API_PATH + path, { method: 'POST' })
+const apiPost = (path, body) => fetch(
+  API_PATH + path,
+  { method: 'POST',
+    body: body ? JSON.stringify(body) : body,
+    headers: body ? { 'Content-Type': 'application/json' } : {}
+  })
   .then(response => {
     if (response.ok) return response;
     throw new APIError(response);
@@ -37,7 +42,8 @@ const state = new Proxy(
     current: {},
     servers: {},
     preferences: {},
-    version: ''
+    version: '',
+    ips: {},
   },
   {
     set: function (target, key, value) {
@@ -47,6 +53,7 @@ const state = new Proxy(
         else if (key === 'preferences') onPreferencesChange();
         else if (key === 'servers') onServersChange();
         else if (key === 'version') onVersionChange();
+        else if (key === 'ips') onIpsChange();
       }
       return true;
     },
@@ -65,6 +72,10 @@ const onStatusChange = () => {
 	updateServersIndex();
 };
 
+const onIpsChange = () => {
+  document.getElementById('ips').replaceChildren(document.createTextNode(`VPN IP: ${state.ips.vpn} - Public IP: ${state.ips.public}` ));
+};
+
 const onPreferencesChange = () => {
   const prefs = document.getElementById('preferences');
 
@@ -73,6 +84,7 @@ const onPreferencesChange = () => {
     if (!state.preferences[existingDivs[i].id.slice(11)]) existingDivs[i].remove();
   }
 
+  console.info(state.preferences);
   Object.entries(state.preferences).sort((a, b) => a[0].localeCompare(b[0])).forEach(([key, value]) => {
     const existing = document.getElementById(key);
     if (existing) {
@@ -84,7 +96,7 @@ const onPreferencesChange = () => {
       pref.classList.add('preference', 'row', 'justify-content-md-center', 'p-1');
 
       const labelDiv = document.createElement('div');
-      labelDiv.classList.add('col-sm-6', 'text-start');
+      labelDiv.classList.add('col-sm-2', 'text-start');
       const label = document.createElement('label');
       label.classList.add('col-form-label', 'form-control-sm');
       label.appendChild(document.createTextNode(key));
@@ -92,11 +104,16 @@ const onPreferencesChange = () => {
 
       const valueDiv = document.createElement('div');
       valueDiv.classList.add('col-md-3');
-      const input = document.createElement('input');
+      valueDiv.style.width = '25rem'
+      const input = document.createElement(key == 'split-app' ? 'textarea' : 'input');
+      if (key == 'split-app') {
+        input.rows = 4
+      } else {
+        input.type = 'text';
+      }
       input.classList.add('form-control', 'form-control-sm');
       input.id = key;
       input.value = value;
-      input.type = 'text'
       input.addEventListener('input', e => document.getElementById('save-' + input.id).disabled = state.preferences[input.id] === e.target.value);
       valueDiv.appendChild(input);
 
@@ -127,24 +144,29 @@ const onServersChange = () => {
   const dropdown = document.getElementById('servers-list');
   dropdown.replaceChildren();
 
+  const option_auto = document.createElement('option');
+  option_auto.text = "auto";
+  option_auto.value = "auto";
+  dropdown.appendChild(option_auto)
+
   Object.entries(state.servers).forEach(([key, value]) => {
     const group = document.createElement('optgroup');
     group.label = key;
     value.forEach(server => {
       const option = document.createElement('option');
-      option.text = server.location;
-      option.value = server.alias;
+      option.text = server;
+      option.value = server;
       group.appendChild(option);
     });
     dropdown.appendChild(group);
-	});
+  });
 };
 
 const onVersionChange = () => document.getElementById('version').replaceChildren(document.createTextNode('v' + state.version));
 
 const updateServersIndex = () => {
   const dropdown = document.getElementById('servers-list');
-  const server = state.current.server || 'smart';
+  const server = state.current.server || 'auto';
   const groups = dropdown.children;
   for (var i = 0; i < groups.length; i++) {
     const options = groups[i].children;
@@ -158,7 +180,9 @@ const updateServersIndex = () => {
 };
 
 const savePreference = async (key) => {
-  return apiPost(`/preferences/${key}/${document.getElementById(key).value}`)
+  value = document.getElementById(key).value
+  if (/\n/.exec(value)) value = value.split('\n')
+  return apiPost('/preferences', { key, value })
     .then(loadPreferences)
     .catch(function(err) {
       err.response.json()
@@ -194,7 +218,7 @@ const loadServers = async () => {
     return response.json();
   }).then(function(data) {
     console.info('Servers', data);
-		state.servers = data.servers;
+    state.servers = data.servers;
   }).catch(function(err) {
     addMessage(err, 'danger');
     console.error('Failed to load servers', err);
@@ -206,7 +230,7 @@ const loadPreferences = async () => {
     return response.json();
   }).then(function(data) {
     console.info('Preferences', data);
-		state.preferences = data.preferences;
+    state.preferences = data;
   }).catch(function(err) {
     console.error('Failed to load preferences', err);
   });
@@ -221,6 +245,7 @@ const connect = async () => {
   return disableControls('connect')
     .then(() => apiPost('/connect/' + server.value))
     .then(loadStatus)
+    .then(loadIps)
     .catch(function(err) {
       console.error('Failed to connect to: ' + server, err);
     }).finally(enableControls);
@@ -232,25 +257,28 @@ const disconnect = async () => {
   return disableControls('disconnect')
     .then(() => apiPost('/disconnect'))
     .then(loadStatus)
+    .then(loadIps)
     .catch(function(err) {
       console.error('Failed to disconnect', err);
     }).finally(enableControls);
 };
 
-const refreshCluster = async () => {
-  console.info('Refreshing cluster');
-
-  return disableControls('refresh-cluster')
-    .then(() => apiPost('/refresh'))
-    .then(loadServers)
-    .then(loadStatus)
-    .catch(function(err) {
-      console.error('Failed to disconnect', err);
-    }).finally(enableControls);
-};
+const loadIps = async () => {
+  return apiGet('/ips').then(function(response) {
+    return response.json();
+  }).then(function(data) {
+    console.info('IPs', data);
+    state.ips = {
+      vpn: data.vpn_ip,
+      public: data.public_ip
+    };
+  }).catch(function(err) {
+    console.error('Failed to load Ips', err);
+  });
+}
 
 const enableControls = () => {
-  ['connect', 'disconnect', 'refresh-cluster'].forEach(id => {
+  ['connect', 'disconnect'].forEach(id => {
     const btn = document.getElementById(id);
     btn.disabled = false;
     btn.children[0].classList.add('visually-hidden');
@@ -260,7 +288,7 @@ const enableControls = () => {
 };
 
 const disableControls = async (id) => {
-  ['connect', 'disconnect', 'refresh-cluster'].forEach(btnId => document.getElementById(btnId).disabled = true);
+  ['connect', 'disconnect'].forEach(btnId => document.getElementById(btnId).disabled = true);
   if (id) document.getElementById(id).children[0].classList.remove('visually-hidden');
 };
 
@@ -289,6 +317,7 @@ const loadAll = () => {
     .then(loadVersion)
     .then(loadServers)
     .then(loadStatus)
+    .then(loadIps)
     .then(loadPreferences)
     .finally(enableControls);
 
